@@ -17,6 +17,19 @@ namespace Monodoc.Storage
 		ZipFile zipFile;
 		// SharpZipLib use linear search to map name to index, correct that a bit
 		Dictionary<string, int> entries = new Dictionary<string, int> ();
+		// Use a fixed timestamp for zip entries when SOURCE_DATE_EPOCH is set,
+		// to make builds reproducible.
+		// See https://reproducible-builds.org/specs/source-date-epoch/
+		static readonly DateTime buildTime = GetBuildTime ();
+
+		static DateTime GetBuildTime ()
+		{
+			string epoch = Environment.GetEnvironmentVariable ("SOURCE_DATE_EPOCH");
+			long seconds;
+			if (!string.IsNullOrEmpty (epoch) && long.TryParse (epoch, out seconds))
+				return new DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds (seconds);
+			return DateTime.Now;
+		}
 
 		public ZipStorage (string zipFileName)
 		{
@@ -74,6 +87,7 @@ namespace Monodoc.Storage
 				id = GetNewCode ();
 
 			ZipEntry entry = new ZipEntry (id);
+			entry.DateTime = buildTime;
 			zipOutput.PutNextEntry (entry);
 		}
 
